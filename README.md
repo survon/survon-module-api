@@ -1,128 +1,238 @@
-# Survon Module Packaging Guidelines
+# Survon Module Contribution Guidelines
 
-This document specifies the packaging requirements for modules to be loaded by the Survon runtime. All modules must adhere to these guidelines so that they can be detected, extracted, and loaded automatically.
+Survon is an offline, off-grid survival system built on modular principles. To ensure consistency, reliability, and ease of integration, every module must adhere to the following guidelines. This document outlines how modules are categorized, how they must be packaged, and the contribution standards for the community.
 
-## 1. Module Package Structure
+---
 
-Each module must be delivered as a ZIP file with the following structure at the **root** of the archive (i.e., no extra top-level folder):
+## 1. Module Categories and Naming Conventions
+
+Modules are organized into distinct categories. Each category has a unique prefix that must be used in the module’s name. This ensures clarity and consistency across the ecosystem.
+
+**Categories:**
+
+- **Communication (com):**  
+  Modules for communication systems.  
+  *Examples:*  
+  - `mod-rust-com--morse-code`
+  - `mod-rust-com--irc`
+
+- **Monitoring (mon):**  
+  Modules for monitoring systems and sensors.  
+  *Examples:*  
+  - `mod-rust-mon--temperature-sensor`
+  - `mod-rust-mon--camera-feed`
+
+- **Defense (def):**  
+  Modules for defensive systems.  
+  *Examples:*  
+  - `mod-rust-def--manual-turret`
+  - `mod-rust-def--motion-turret`
+
+- **Power (pow):**  
+  Modules for managing power systems.  
+  *Examples:*  
+  - `mod-rust-pow--solar-array`
+  - `mod-rust-pow--battery-monitor`
+
+- **Weather (wth):**  
+  Modules for weather tracking and forecasting.  
+  *Examples:*  
+  - `mod-rust-wth--storm-alert`
+  - `mod-rust-wth--rain-gauge`
+
+- **Library (lib):**  
+  Knowledge and computational modules.  
+  *Examples:*  
+  - `mod-rust-lib--pubmed-library`
+  - `mod-rust-lib--math-utils`
+
+- **Agriculture (agr):**  
+  Modules for farming and food production.  
+  *Examples:*  
+  - `mod-rust-agr--soil-monitor`
+  - `mod-rust-agr--irrigation-control`
+
+- **Entertainment (ent):**  
+  Modules for recreational activities.  
+  *Examples:*  
+  - `mod-rust-ent--text-adventure`
+  - `mod-rust-ent--media-player`
+
+- **Crafting (crf):**  
+  Modules for creating or repairing items.  
+  *Examples:*  
+  - `mod-rust-crf--blueprint-helper`
+  - `mod-rust-crf--tool-fabricator`
+
+- **Electronics (ele):**  
+  Modules for electronics design and control.  
+  *Examples:*  
+  - `mod-rust-ele--circuit-simulator`
+  - `mod-rust-ele--signal-generator`
+
+- **Sensors (sen):**  
+  Modules for sensor integration.  
+  *Examples:*  
+  - `mod-rust-sen--motion-detector`
+  - `mod-rust-sen--proximity-sensor`
+
+- **Traps (trp):**  
+  Modules for trapping and detection systems.  
+  *Examples:*  
+  - `mod-rust-trp--animal-trap`
+  - `mod-rust-trp--intruder-alarm`
+
+*Note:* The module name should follow the format `mod-rust-<category_prefix>--<module_name>`, ensuring that each module is clearly identified by its function.
+
+---
+
+## 2. Packaging Requirements
+
+Each module must be delivered as a single ZIP file that follows this exact structure at the root:
 
 ```
 module-example.zip
-├── manifest.json
-└── libmodule_example.so
+├── meta.json
+├── mod.rs (or module.rs)
+├── [Optional files: README.md, LICENSE, tests/]
 ```
 
-- **manifest.json:**  
-  A JSON file providing the module's metadata.
-- **libmodule_example.so:**  
-  The compiled dynamic library for your module.
+**File Descriptions:**
 
-> **Important:**  
-> When extracted, the ZIP file must show `manifest.json` and your dynamic library directly in the extraction directory.
+- **meta.json:**  
+  This file contains metadata that validates the module. It must include, at minimum:
+  ```json
+  {
+    "name": "Module Example",
+    "lib_file": "libmodule_example.so",
+    "version": "1.0.0"
+  }
+  ```
+- `name`: The unique module name (should match the naming convention above).
+- `lib_file`: The filename of the dynamic library produced by compiling the module (for Linux, a `.so` file).
+- `version`: The module’s version following semantic versioning.
 
-## 2. manifest.json Requirements
+- **Module Source Code:**  
+  The module’s code (typically in a file named `mod.rs` or `module.rs`) must implement the Survon module API.
 
-Your `manifest.json` file must be a valid JSON file and include at least the following keys:
+- **Optional Files:**  
+  Any additional documentation (e.g., `README.md`), licensing information (e.g., `LICENSE`), or tests (inside a `tests/` directory).
 
-- `name`: The unique name (and namespace) of the module (string).
-- `lib_file`: The filename of the dynamic library (string).
+*Important:* Ensure that **meta.json** and the dynamic library (once compiled) are at the root of the ZIP file—not nested inside an extra top-level folder. On macOS, this means you should select the files inside your module package directory when compressing, rather than the folder itself.
 
-**Example:**
+---
 
-```json
-{
-  "name": "Module Example",
-  "lib_file": "libmodule_example.so"
-}
-```
+## 3. Building the Module
 
-Ensure the value for `lib_file` exactly matches the filename of your dynamic library.
-
-## 3. Building Your Module as a Dynamic Library
-
-To compile your module as a dynamic library that works with Survon, your Cargo project must be configured appropriately. In your module’s `Cargo.toml`, include the following configuration:
+Your module’s Cargo project must be configured to compile as a dynamic library. Ensure your `Cargo.toml` includes:
 
 ```toml
 [lib]
 crate-type = ["cdylib"]
-
-[target.aarch64-unknown-linux-musl]
-linker = "aarch64-linux-musl-gcc"
 ```
 
-This setting tells Cargo to compile your project as a dynamic library (a shared object) suitable for linking with other programs. Then, simply run:
+For cross-compilation to produce a Linux shared object (`.so` file) on a non-Linux system, add a `.cargo/config.toml` file in your project root with:
+
+```toml
+[target.aarch64-unknown-linux-musl]
+linker = "aarch64-unknown-linux-musl-gcc"
+```
+
+Then build with:
 
 ```bash
-cargo build --release
+cargo build --release --target=aarch64-unknown-linux-musl
 ```
 
-The resulting dynamic library will be located in the `target/release` directory (e.g., as `libmodule_example.so` on Linux).
+The resulting `.so` file (e.g., `libmodule_example.so`) will be located in `target/aarch64-unknown-linux-musl/release/`.
 
-## 4. Packaging Your Module
+---
 
-1. **Prepare Your Package Directory:**  
-   Create a folder (e.g., `module_package/`) in your project root and place the following files at its root:
-    - Your compiled dynamic library (e.g., `libmodule_example.so`)
-    - `manifest.json`
+## 4. Packaging Workflow
 
-2. **Create the ZIP Archive:**  
-   To package the module so that its contents are at the root of the archive, navigate into the package directory and run:
+We provide a Makefile target to automate packaging. In your module project, include a Makefile with a target similar to:
 
-   ```bash
-   cd module_package
-   zip -r ../module-example.zip . -x "*.DS_Store"
-   cd ..
-   ```
+```makefile
+.PHONY: package
 
-   This will create `module-example.zip` in your project root, with the correct structure.
+# Package the module into a ZIP file. Assumes your module package files are in the "package" directory.
+package:
+	@echo "Packaging module..."
+	cd package && zip -r ../module-example.zip . -x "*.DS_Store"
+	@echo "Module packaged as module-example.zip"
+```
 
-3. **Verify the ZIP Structure:**  
-   Check the contents with:
+Place your compiled dynamic library, meta.json, and other necessary files directly inside the `package/` directory, then run:
 
-   ```bash
-   unzip -l module-example.zip
-   ```
+```bash
+make package
+```
 
-   Ensure that `manifest.json` and your `.so` file appear at the top level, without an extra directory.
+Verify the ZIP structure with:
 
-## 5. Testing Your Module with Survon
+```bash
+unzip -l module-example.zip
+```
 
-1. **Place the ZIP File:**  
-   Copy your module ZIP file (`module-example.zip`) into the module directory used by Survon (typically `/tmp/wasteland`).
+---
+
+## 5. Testing with Survon
+
+1. **Deploy Your Module:**  
+   Place your `module-example.zip` file into the Survon module directory (`/tmp/wasteland`) on the target system. For development using Docker, mount your local module directory (e.g., `./tmp/wasteland`) to `/tmp/wasteland` in the container.
 
 2. **Run Survon:**  
-   Start the Survon runtime. It will scan `/tmp/wasteland`, extract the ZIP file, read the manifest, and load your module.
+   When the Survon runtime starts, it will scan `/tmp/wasteland`, extract each ZIP file, read the metadata from **meta.json**, and load the module's dynamic library.
 
-3. **Verify the Log Output:**  
-   Confirm that the runtime logs indicate your module was successfully detected and loaded.
+3. **Verify:**  
+   Check the Survon logs or UI to ensure that your module is detected and loaded correctly.
 
-## 6. Example Workflow Summary
+---
 
-1. **Develop Your Module:**
-    - Implement your module using the Survon module API.
-    - Ensure your `Cargo.toml` includes:
-      ```toml
-      [lib]
-      crate-type = ["cdylib"]
-      ```
-    - Run `cargo build --release` to compile your dynamic library.
+## 6. Community Contribution Guidelines
 
-2. **Prepare Your Package Directory:**  
-   Place `manifest.json` and your dynamic library (e.g., `libmodule_example.so`) in a folder (e.g., `module_package/`).
+All modules contributed to the Survon ecosystem must adhere to these standards:
 
-3. **Package the Module:**
-   ```bash
-   cd module_package
-   zip -r ../module-example.zip . -x "*.DS_Store"
-   cd ..
-   ```
+- **Module Naming:** Follow the established category prefixes and naming format.
+- **Packaging:** Use the ZIP file structure described above.
+- **Versioning:** Follow semantic versioning.
+- **Testing:** Ensure that your module passes all required tests before contribution.
+- **Documentation:** Include a README.md in your package that describes:
+    - The module’s purpose and functionality.
+    - Installation instructions.
+    - Usage examples.
 
-4. **Test the ZIP:**
-   ```bash
-   unzip -l module-example.zip
-   ```
+By following these guidelines, you help ensure that all modules are consistent, reliable, and easy for Survon to integrate and load.
 
-5. **Deploy with Survon:**  
-   Place `module-example.zip` in `/tmp/wasteland` on your Survon runtime and start the system.
+---
 
-By following these guidelines, you ensure that your module will be compatible with the Survon runtime and that the open source community has a clear standard to follow. Happy module building!
+## 7. Example Directory Structure
+
+For a module project named `mod-rust-mon--temperature-sensor`, your repository might look like this:
+
+```
+mod-rust-mon--temperature-sensor/
+├── Cargo.toml
+├── src/
+│   └── lib.rs         # Implements the Survon module API
+├── package/           # Directory for packaging files
+│   ├── meta.json      # Metadata file (not manifest.json in this case)
+│   ├── libmod_rust_mon--temperature_sensor.so
+│   └── README.md      # Module documentation
+├── .cargo/
+│   └── config.toml    # (If cross-compiling, see instructions above)
+└── Makefile           # Contains a target to package the module
+```
+
+---
+
+## 8. Final Notes
+
+- **Ensure Consistency:**  
+  The filenames in **meta.json** must exactly match the generated dynamic library filenames.
+- **Avoid Extra Folders:**  
+  When compressing your package directory, make sure the files are at the root of the ZIP file.
+- **Testing:**  
+  Always test your module package by extracting it locally and verifying that the structure meets the guidelines.
+
+Happy module building and thank you for contributing to the Survon ecosystem!
